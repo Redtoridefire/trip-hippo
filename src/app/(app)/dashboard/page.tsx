@@ -10,23 +10,44 @@ async function getTrips() {
 
   if (!user) return []
 
-  // Get trips where user is owner or member
-  const { data: trips, error } = await supabase
+  // Get trips where user is owner
+  const { data: ownedTrips, error: ownedError } = await supabase
     .from("trips")
-    .select(`
-      *,
-      trip_members!inner(user_id, role, accepted_at)
-    `)
-    .or(`owner_id.eq.${user.id},trip_members.user_id.eq.${user.id}`)
+    .select("*")
+    .eq("owner_id", user.id)
     .is("deleted_at", null)
-    .order("updated_at", { ascending: false })
 
-  if (error) {
-    console.error("Error fetching trips:", error)
-    return []
+  if (ownedError) {
+    console.error("Error fetching owned trips:", ownedError)
   }
 
-  return trips || []
+  // Get trips where user is a member
+  const { data: memberData, error: memberError } = await supabase
+    .from("trip_members")
+    .select("trip_id")
+    .eq("user_id", user.id)
+
+  let memberTrips: any[] = []
+  if (!memberError && memberData && memberData.length > 0) {
+    const tripIds = memberData.map((m: { trip_id: string }) => m.trip_id)
+    const { data } = await supabase
+      .from("trips")
+      .select("*")
+      .in("id", tripIds)
+      .is("deleted_at", null)
+    memberTrips = data || []
+  }
+
+  // Combine and deduplicate by id
+  const allTrips = [...(ownedTrips || []), ...memberTrips]
+  const uniqueTrips = allTrips.filter((trip, index, self) =>
+    index === self.findIndex(t => t.id === trip.id)
+  )
+
+  // Sort by updated_at descending
+  return uniqueTrips.sort((a, b) =>
+    new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+  )
 }
 
 export default async function DashboardPage() {

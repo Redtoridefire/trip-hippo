@@ -4,13 +4,15 @@ import { useState, useCallback } from "react"
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
   type DragStartEvent,
+  type DragOverEvent,
 } from "@dnd-kit/core"
 import {
   arrayMove,
@@ -93,33 +95,121 @@ export function ItineraryView({
     setActiveId(event.active.id as string)
   }
 
+  function findContainer(id: string): string | null {
+    // Check if it's a day container (format: day-{uuid})
+    if (id.startsWith("day-")) {
+      const dayId = id.replace("day-", "")
+      if (days.some(d => d.id === dayId)) return dayId
+    }
+    if (id === "unscheduled") return "unscheduled"
+
+    // Find which day contains this item
+    const item = items.find(i => i.id === id)
+    if (item) {
+      return item.day_id || "unscheduled"
+    }
+    return null
+  }
+
+  async function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    const activeContainer = findContainer(activeId)
+    const overContainer = findContainer(overId)
+
+    if (!activeContainer || !overContainer || activeContainer === overContainer) {
+      return
+    }
+
+    // Moving to a different container
+    setItems((prev) => {
+      const activeItem = prev.find(i => i.id === activeId)
+      if (!activeItem) return prev
+
+      const newDayId = overContainer === "unscheduled" ? undefined : overContainer
+
+      return prev.map(item =>
+        item.id === activeId
+          ? { ...item, day_id: newDayId }
+          : item
+      )
+    })
+  }
+
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     setActiveId(null)
 
-    if (!over || active.id === over.id) return
+    if (!over) return
 
-    const oldIndex = items.findIndex((item) => item.id === active.id)
-    const newIndex = items.findIndex((item) => item.id === over.id)
+    const activeId = active.id as string
+    const overId = over.id as string
 
-    if (oldIndex === -1 || newIndex === -1) return
+    const activeItem = items.find(i => i.id === activeId)
+    if (!activeItem) return
 
-    const newItems = arrayMove(items, oldIndex, newIndex)
+    // Determine the target day
+    let targetDayId: string | undefined = undefined
+    if (overId.startsWith("day-")) {
+      // Dropped directly on a day container
+      targetDayId = overId.replace("day-", "")
+    } else if (overId === "unscheduled") {
+      targetDayId = undefined
+    } else {
+      // Dropped on another item - use that item's day
+      const overItem = items.find(i => i.id === overId)
+      targetDayId = overItem?.day_id
+    }
 
-    // Update sort orders
-    const updates = newItems.map((item, index) => ({
-      id: item.id,
-      sort_order: index,
-    }))
+    // Get items in the target container
+    const containerItems = items.filter(i =>
+      targetDayId ? i.day_id === targetDayId : (!i.day_id && !i.list_name)
+    )
 
-    setItems(newItems)
+    // Find positions for reordering within container
+    const activeIndex = containerItems.findIndex(i => i.id === activeId)
+    const overIndex = containerItems.findIndex(i => i.id === overId)
 
-    // Persist to database
-    for (const update of updates) {
-      await supabase
-        .from("itinerary_items")
-        .update({ sort_order: update.sort_order })
-        .eq("id", update.id)
+    let newOrder = [...containerItems]
+    if (activeIndex !== -1 && overIndex !== -1 && activeIndex !== overIndex) {
+      newOrder = arrayMove(containerItems, activeIndex, overIndex)
+    }
+
+    // Update items with new order and day_id
+    const updatedItems = items.map(item => {
+      if (item.id === activeId) {
+        return { ...item, day_id: targetDayId }
+      }
+      const orderIndex = newOrder.findIndex(i => i.id === item.id)
+      if (orderIndex !== -1) {
+        return { ...item, sort_order: orderIndex }
+      }
+      return item
+    })
+
+    setItems(updatedItems)
+
+    // Persist changes to database
+    await supabase
+      .from("itinerary_items")
+      .update({
+        day_id: targetDayId,
+        sort_order: newOrder.findIndex(i => i.id === activeId)
+      })
+      .eq("id", activeId)
+
+    // Update sort orders for other items in the container
+    for (let i = 0; i < newOrder.length; i++) {
+      if (newOrder[i].id !== activeId) {
+        await supabase
+          .from("itinerary_items")
+          .update({ sort_order: i })
+          .eq("id", newOrder[i].id)
+      }
     }
   }
 
@@ -162,21 +252,19 @@ export function ItineraryView({
         {activeTab === "itinerary" ? (
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={closestCorners}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
             <div className="space-y-6">
               {/* Unscheduled items */}
-              {getUnscheduledItems().length > 0 && (
-                <div className="rounded-lg border border-gray-200 bg-white p-4">
-                  <h3 className="mb-3 text-sm font-medium text-gray-700">
-                    Unscheduled
-                  </h3>
-                  <SortableContext
-                    items={getUnscheduledItems().map((i) => i.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
+              <UnscheduledDropzone>
+                <SortableContext
+                  items={getUnscheduledItems().map((i) => i.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {getUnscheduledItems().length > 0 ? (
                     <div className="space-y-2">
                       {getUnscheduledItems().map((item) => (
                         <ItineraryItemCard
@@ -195,9 +283,13 @@ export function ItineraryView({
                         />
                       ))}
                     </div>
-                  </SortableContext>
-                </div>
-              )}
+                  ) : (
+                    <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
+                      Drag items here to unschedule them
+                    </div>
+                  )}
+                </SortableContext>
+              </UnscheduledDropzone>
 
               {/* Days */}
               {days.map((day) => (
@@ -255,6 +347,25 @@ export function ItineraryView({
           onItemCreated={(item) => setItems([...items, item])}
         />
       </div>
+    </div>
+  )
+}
+
+// Droppable component for unscheduled items
+function UnscheduledDropzone({ children }: { children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: "unscheduled",
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border bg-white p-4 transition-colors ${
+        isOver ? "border-blue-400 bg-blue-50" : "border-gray-200"
+      }`}
+    >
+      <h3 className="mb-3 text-sm font-medium text-gray-700">Unscheduled</h3>
+      {children}
     </div>
   )
 }
