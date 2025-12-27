@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Send, Bot, User, Sparkles } from "lucide-react"
+import { Send, Bot, User, Sparkles, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { use } from "react"
 
@@ -12,10 +12,11 @@ interface Message {
 }
 
 const suggestedPrompts = [
-  "Create a 3-day itinerary for my saved places",
-  "Suggest the best restaurants near my hotel",
+  "Create a 3-day itinerary for my trip",
+  "Suggest the best restaurants in this area",
   "What should I pack for this trip?",
-  "Optimize my itinerary for Day 1",
+  "What are the must-see attractions?",
+  "Give me local tips and hidden gems",
 ]
 
 export default function AssistantPage({
@@ -27,6 +28,7 @@ export default function AssistantPage({
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -46,18 +48,39 @@ export default function AssistantPage({
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+    setError(null)
 
-    // Simulate AI response (replace with actual API call)
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          tripId,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "Failed to get response")
+      }
+
+      const data = await response.json()
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content:
-          "I'm your AI travel assistant! I can help you plan your itinerary, suggest places to visit, optimize your routes, and answer questions about your destinations. This feature is coming soon with full AI capabilities.\n\nIn the meantime, you can use the itinerary and map views to plan your trip manually.",
+        content: data.message,
       }
       setMessages((prev) => [...prev, assistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong")
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   function handlePromptClick(prompt: string) {
@@ -96,6 +119,13 @@ export default function AssistantPage({
           </div>
         ) : (
           <div className="mx-auto max-w-2xl space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600">
+                <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+
             {messages.map((message) => (
               <div
                 key={message.id}
