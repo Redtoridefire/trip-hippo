@@ -4,6 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
+  LayoutDashboard,
   Calendar,
   Map,
   Plane,
@@ -18,6 +19,7 @@ interface TripNavProps {
 }
 
 const navItems = [
+  { name: "Overview", href: "", icon: LayoutDashboard },
   { name: "Itinerary", href: "itinerary", icon: Calendar },
   { name: "Map", href: "map", icon: Map },
   { name: "Reservations", href: "reservations", icon: Plane },
@@ -34,7 +36,7 @@ export function TripNav({ tripId }: TripNavProps) {
     <nav className="border-b border-gray-200 bg-white">
       <div className="flex overflow-x-auto px-4 lg:px-6">
         {navItems.map((item) => {
-          const href = `/trip/${tripId}/${item.href}`
+          const href = item.href ? `/trip/${tripId}/${item.href}` : `/trip/${tripId}`
           const isActive = pathname === href
 
           return (

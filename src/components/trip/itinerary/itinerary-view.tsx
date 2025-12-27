@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import {
   DndContext,
   DragOverlay,
@@ -23,6 +23,7 @@ import { DayColumn } from "./day-column"
 import { ItineraryItemCard } from "./itinerary-item-card"
 import { AddItemButton } from "./add-item-button"
 import { ListsSection } from "./lists-section"
+import { useRealtimeItinerary } from "@/hooks/use-realtime-trip"
 import type { TripDay, ItineraryItem, TripList } from "@/types"
 
 interface ItineraryViewProps {
@@ -45,6 +46,33 @@ export function ItineraryView({
   const [activeTab, setActiveTab] = useState<"itinerary" | "lists">("itinerary")
 
   const supabase = createClient()
+
+  // Real-time sync for collaborative editing
+  const handleRealtimeInsert = useCallback((item: ItineraryItem) => {
+    setItems((prev) => {
+      // Avoid duplicates (if we just added this item locally)
+      if (prev.some((i) => i.id === item.id)) return prev
+      return [...prev, item]
+    })
+  }, [])
+
+  const handleRealtimeUpdate = useCallback((item: ItineraryItem) => {
+    setItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, ...item } : i))
+    )
+  }, [])
+
+  const handleRealtimeDelete = useCallback((id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id))
+  }, [])
+
+  // Subscribe to realtime changes
+  useRealtimeItinerary(
+    tripId,
+    handleRealtimeInsert,
+    handleRealtimeUpdate,
+    handleRealtimeDelete
+  )
 
   const sensors = useSensors(
     useSensor(PointerSensor, {

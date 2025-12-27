@@ -111,9 +111,76 @@ export class MapboxDirectionsProvider implements DirectionsProvider {
   }
 }
 
+// Google Distance Matrix Provider
+export class GoogleDistanceMatrixProvider implements DirectionsProvider {
+  name = "google"
+  private apiKey: string
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey
+  }
+
+  async getDirections(options: DirectionsOptions): Promise<DirectionsResult | null> {
+    // Google Directions API - for now return null, use Matrix for optimization
+    return null
+  }
+
+  async getMatrix(
+    origins: { lat: number; lng: number }[],
+    destinations: { lat: number; lng: number }[]
+  ): Promise<MatrixResult | null> {
+    const originsStr = origins.map(o => `${o.lat},${o.lng}`).join("|")
+    const destsStr = destinations.map(d => `${d.lat},${d.lng}`).join("|")
+
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(originsStr)}&destinations=${encodeURIComponent(destsStr)}&key=${this.apiKey}`
+
+    try {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error("Google Distance Matrix failed")
+
+      const data = await response.json()
+
+      if (data.status !== "OK") {
+        console.error("Google Distance Matrix error:", data.status)
+        return null
+      }
+
+      const distances: number[][] = []
+      const durations: number[][] = []
+
+      for (const row of data.rows) {
+        const distRow: number[] = []
+        const durRow: number[] = []
+        for (const element of row.elements) {
+          if (element.status === "OK") {
+            distRow.push(element.distance.value)
+            durRow.push(element.duration.value)
+          } else {
+            distRow.push(Infinity)
+            durRow.push(Infinity)
+          }
+        }
+        distances.push(distRow)
+        durations.push(durRow)
+      }
+
+      return { distances, durations }
+    } catch (error) {
+      console.error("Google Distance Matrix error:", error)
+      return null
+    }
+  }
+}
+
 // Factory to get the configured provider
 export function getDirectionsProvider(): DirectionsProvider {
+  const googleKey = process.env.GOOGLE_DIRECTIONS_API_KEY
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+
+  // Prefer Google if available (better for driving directions)
+  if (googleKey) {
+    return new GoogleDistanceMatrixProvider(googleKey)
+  }
 
   if (mapboxToken) {
     return new MapboxDirectionsProvider(mapboxToken)

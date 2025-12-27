@@ -13,11 +13,13 @@ import {
   Calendar,
   FileText,
   ExternalLink,
+  Upload,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AddReservationModal } from "./add-reservation-modal"
+import { ImportReservation } from "./import-reservation"
 import type { Reservation, ReservationType } from "@/types"
 
 interface ReservationsViewProps {
@@ -50,6 +52,7 @@ export function ReservationsView({
   const [reservations, setReservations] = useState(initialReservations)
   const [activeFilter, setActiveFilter] = useState<ReservationType | "all">("all")
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [isImportOpen, setIsImportOpen] = useState(false)
 
   // Group reservations by type
   const groupedReservations = reservations.reduce((acc, res) => {
@@ -74,11 +77,30 @@ export function ReservationsView({
             Keep all your bookings in one place
           </p>
         </div>
-        <Button onClick={() => setIsAddModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Reservation
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsImportOpen(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import from Email
+          </Button>
+          <Button onClick={() => setIsAddModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Reservation
+          </Button>
+        </div>
       </div>
+
+      {/* Import section */}
+      {isImportOpen && (
+        <div className="mb-6">
+          <ImportReservation
+            tripId={tripId}
+            onImported={(res) => {
+              setReservations([...reservations, res])
+            }}
+            onClose={() => setIsImportOpen(false)}
+          />
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div className="mb-6 flex flex-wrap gap-2">

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { MapPin, Heart, Eye, ArrowLeft, PlaneTakeoff } from "lucide-react"
+import { MapPin, Heart, Eye, ArrowLeft, PlaneTakeoff, Plus, Edit } from "lucide-react"
 import type { Guide } from "@/types"
 
 async function getGuides() {
@@ -73,10 +73,22 @@ export default async function GuidesPage() {
               Back to Home
             </Link>
           )}
-          <h1 className="text-2xl font-bold text-gray-900">Travel Guides</h1>
-          <p className="mt-1 text-gray-600">
-            Discover curated itineraries and travel tips from the community
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Travel Guides</h1>
+              <p className="mt-1 text-gray-600">
+                Discover curated itineraries and travel tips from the community
+              </p>
+            </div>
+            {user && (
+              <Link href="/guides/new">
+                <Button>
+                  <Plus className="mr-1.5 h-4 w-4" />
+                  Create Guide
+                </Button>
+              </Link>
+            )}
+          </div>
         </div>
 
         {/* Guides grid */}

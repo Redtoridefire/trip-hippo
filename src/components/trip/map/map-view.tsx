@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { format, parseISO } from "date-fns"
-import { MapPin, Layers, Route } from "lucide-react"
+import { MapPin, Layers, Route, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import type { TripDay, ItineraryItem } from "@/types"
@@ -12,6 +12,7 @@ interface MapViewProps {
   tripId: string
   days: TripDay[]
   items: ItineraryItem[]
+  onItemsReorder?: (order: string[]) => void
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
@@ -28,13 +29,18 @@ const dayColors = [
   "#84CC16", // lime
 ]
 
-export function MapView({ tripId, days, items }: MapViewProps) {
+export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const [mapLoaded, setMapLoaded] = useState(false)
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [showRoutes, setShowRoutes] = useState(true)
   const [selectedItem, setSelectedItem] = useState<ItineraryItem | null>(null)
+  const [optimizing, setOptimizing] = useState(false)
+  const [optimizeResult, setOptimizeResult] = useState<{
+    distanceText: string
+    durationText: string
+  } | null>(null)
 
   // Filter items by selected day
   const filteredItems = useMemo(() => {
@@ -65,6 +71,56 @@ export function MapView({ tripId, days, items }: MapViewProps) {
     },
     [days]
   )
+
+  // Items with valid coordinates
+  const itemsWithCoords = useMemo(() => {
+    return filteredItems.filter(
+      (item) => item.place?.lat != null && item.place?.lng != null
+    )
+  }, [filteredItems])
+
+  // Optimize route
+  async function handleOptimizeRoute() {
+    if (itemsWithCoords.length < 2) return
+
+    setOptimizing(true)
+    setOptimizeResult(null)
+
+    try {
+      const response = await fetch("/api/routes/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tripId,
+          dayId: selectedDay,
+          places: itemsWithCoords.map((item) => ({
+            id: item.id,
+            lat: item.place!.lat,
+            lng: item.place!.lng,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Optimization failed")
+      }
+
+      const data = await response.json()
+      setOptimizeResult({
+        distanceText: data.distanceText,
+        durationText: data.durationText,
+      })
+
+      // Notify parent of new order
+      if (onItemsReorder && data.order) {
+        onItemsReorder(data.order)
+      }
+    } catch (error) {
+      console.error("Route optimization error:", error)
+    } finally {
+      setOptimizing(false)
+    }
+  }
 
   // Initialize map
   useEffect(() => {
@@ -235,6 +291,33 @@ export function MapView({ tripId, days, items }: MapViewProps) {
           <Route className="mr-1.5 h-4 w-4" />
           Routes
         </Button>
+
+        {/* Optimize route button */}
+        {itemsWithCoords.length >= 2 && (
+          <div className="space-y-1">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleOptimizeRoute}
+              disabled={optimizing}
+              className="w-full shadow-lg bg-purple-600 hover:bg-purple-700"
+            >
+              {optimizing ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1.5 h-4 w-4" />
+              )}
+              {optimizing ? "Optimizing..." : "Optimize Route"}
+            </Button>
+            {optimizeResult && (
+              <div className="rounded-lg bg-white p-2 text-xs shadow-lg">
+                <p className="font-medium text-gray-900">Optimized!</p>
+                <p className="text-gray-600">{optimizeResult.distanceText}</p>
+                <p className="text-gray-600">{optimizeResult.durationText}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Selected item popup */}
