@@ -31,7 +31,7 @@ export default function SignupPage() {
       return
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -46,6 +46,13 @@ export default function SignupPage() {
       return
     }
 
+    // If user is immediately confirmed (email verification disabled), redirect to dashboard
+    if (data.user && data.session) {
+      router.push("/dashboard")
+      return
+    }
+
+    // Otherwise show the email confirmation message
     setSuccess(true)
     setLoading(false)
   }
