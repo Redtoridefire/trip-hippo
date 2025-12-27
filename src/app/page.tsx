@@ -118,7 +118,7 @@ export default function HomePage() {
                 </Button>
               </Link>
               <Link href="/guides">
-                <Button variant="outline" size="lg">
+                <Button variant="outline" size="lg" className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50">
                   Explore Guides
                 </Button>
               </Link>

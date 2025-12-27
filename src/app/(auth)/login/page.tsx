@@ -69,7 +69,16 @@ function LoginForm() {
         <form onSubmit={handleLogin} className="space-y-4">
           {error && (
             <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
-              {error}
+              {error === "Supabase not configured" ? (
+                <div>
+                  <p className="font-medium">Database not configured</p>
+                  <p className="mt-1 text-xs">
+                    Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your environment variables.
+                  </p>
+                </div>
+              ) : (
+                error
+              )}
             </div>
           )}
 
