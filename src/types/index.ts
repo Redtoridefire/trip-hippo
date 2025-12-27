@@ -13,6 +13,18 @@ export interface User {
   created_at: string
 }
 
+// Profile (database table)
+export interface Profile {
+  id: string
+  name: string | null
+  email: string | null
+  avatar_url: string | null
+  bio: string | null
+  is_public: boolean
+  created_at: string
+  updated_at: string
+}
+
 // Trip
 export interface Trip {
   id: string
@@ -41,6 +53,7 @@ export interface TripWithMembers extends Trip {
 
 // Trip Members
 export interface TripMember {
+  id: string
   trip_id: string
   user_id?: string
   email?: string
@@ -49,6 +62,7 @@ export interface TripMember {
   invited_at: string
   accepted_at?: string
   user?: User
+  profile?: Profile
 }
 
 // Trip Days

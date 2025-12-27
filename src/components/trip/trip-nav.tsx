@@ -10,6 +10,7 @@ import {
   DollarSign,
   CheckSquare,
   MessageSquare,
+  Settings,
 } from "lucide-react"
 
 interface TripNavProps {
@@ -23,6 +24,7 @@ const navItems = [
   { name: "Budget", href: "budget", icon: DollarSign },
   { name: "Checklist", href: "checklist", icon: CheckSquare },
   { name: "Assistant", href: "assistant", icon: MessageSquare },
+  { name: "Settings", href: "settings", icon: Settings },
 ]
 
 export function TripNav({ tripId }: TripNavProps) {
