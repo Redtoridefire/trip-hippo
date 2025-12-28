@@ -30,11 +30,11 @@ export default async function AppLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
       <AppSidebar user={userProfile} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <AppHeader user={userProfile} />
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900">
           {children}
         </main>
       </div>
