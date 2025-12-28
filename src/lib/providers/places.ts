@@ -133,7 +133,9 @@ export function toPlace(details: PlaceDetails): Omit<Place, "id" | "created_at">
     website: details.website,
     rating: details.rating,
     price_level: details.price_level,
-    opening_hours: details.opening_hours,
+    opening_hours: details.opening_hours
+      ? Object.entries(details.opening_hours).map(([day, hours]) => `${day}: ${hours}`)
+      : undefined,
     photos: details.photos,
     categories: details.categories,
   }

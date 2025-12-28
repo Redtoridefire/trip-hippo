@@ -5,6 +5,7 @@ import { X, Plane, Building2, Car, Train, Ticket, FileText } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { DateTimePicker } from "@/components/ui/datetime-picker"
 import type { Reservation, ReservationType } from "@/types"
 
 interface AddReservationModalProps {
@@ -35,6 +36,7 @@ export function AddReservationModal({
   const [confirmation, setConfirmation] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [cost, setCost] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -49,6 +51,7 @@ export function AddReservationModal({
 
     const { data: { user } } = await supabase.auth.getUser()
 
+    const parsedCost = cost ? parseFloat(cost) : undefined
     const reservationData = {
       trip_id: tripId,
       type,
@@ -57,7 +60,10 @@ export function AddReservationModal({
       confirmation: confirmation.trim() || null,
       start_dt: startDate ? new Date(startDate).toISOString() : null,
       end_dt: endDate ? new Date(endDate).toISOString() : null,
-      metadata: {},
+      metadata: {
+        cost: parsedCost,
+        currency: "USD",
+      },
       created_by: user?.id,
     }
 
@@ -85,19 +91,20 @@ export function AddReservationModal({
     setConfirmation("")
     setStartDate("")
     setEndDate("")
+    setCost("")
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Add Reservation
           </h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+            className="rounded-lg p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
             <X className="h-5 w-5" />
           </button>
@@ -105,14 +112,14 @@ export function AddReservationModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-3 text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}
 
           {/* Type selector */}
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300">
               Type
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -123,8 +130,8 @@ export function AddReservationModal({
                   onClick={() => setType(t)}
                   className={`flex flex-col items-center gap-1 rounded-lg border p-3 transition-colors ${
                     type === t
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 hover:bg-gray-50"
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                      : "border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -148,25 +155,32 @@ export function AddReservationModal({
             onChange={(e) => setProvider(e.target.value)}
           />
 
-          <Input
-            label="Confirmation Number"
-            placeholder="ABC123"
-            value={confirmation}
-            onChange={(e) => setConfirmation(e.target.value)}
-          />
-
           <div className="grid grid-cols-2 gap-4">
             <Input
-              type="datetime-local"
-              label={type === "lodging" ? "Check-in" : "Start"}
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              label="Confirmation Number"
+              placeholder="ABC123"
+              value={confirmation}
+              onChange={(e) => setConfirmation(e.target.value)}
             />
             <Input
-              type="datetime-local"
-              label={type === "lodging" ? "Check-out" : "End"}
+              type="number"
+              label="Cost (USD)"
+              placeholder="0.00"
+              value={cost}
+              onChange={(e) => setCost(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-4">
+            <DateTimePicker
+              label={type === "lodging" ? "Check-in" : "Start Date & Time"}
+              value={startDate}
+              onChange={setStartDate}
+            />
+            <DateTimePicker
+              label={type === "lodging" ? "Check-out" : "End Date & Time"}
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={setEndDate}
             />
           </div>
 

@@ -48,12 +48,15 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
     return items.filter((item) => item.day_id === selectedDay)
   }, [items, selectedDay])
 
-  // Calculate map bounds
+  // Calculate map bounds from items with valid coordinates
   const bounds = useMemo(() => {
-    if (filteredItems.length === 0) return null
+    const validItems = filteredItems.filter(
+      (item) => item.place?.lat != null && item.place?.lng != null
+    )
+    if (validItems.length === 0) return null
 
-    const lngs = filteredItems.map((item) => item.place!.lng!)
-    const lats = filteredItems.map((item) => item.place!.lat!)
+    const lngs = validItems.map((item) => item.place!.lng!)
+    const lats = validItems.map((item) => item.place!.lat!)
 
     return {
       minLng: Math.min(...lngs),
@@ -180,9 +183,7 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
       existingMarkers.forEach((m) => m.remove())
 
       // Add new markers
-      filteredItems.forEach((item, index) => {
-        if (!item.place?.lng || !item.place?.lat) return
-
+      itemsWithCoords.forEach((item, index) => {
         const el = document.createElement("div")
         el.className = "mapbox-marker"
         el.style.cssText = `
@@ -198,36 +199,39 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
           font-size: 14px;
           cursor: pointer;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          border: 2px solid white;
         `
         el.textContent = String(index + 1)
         el.onclick = () => setSelectedItem(item)
 
         new mapboxgl.Marker(el)
-          .setLngLat([item.place.lng, item.place.lat])
+          .setLngLat([item.place!.lng!, item.place!.lat!])
           .addTo(mapRef.current!)
       })
-
-      // Fit bounds if we have items
-      if (bounds && mapRef.current) {
-        mapRef.current.fitBounds(
-          [
-            [bounds.minLng, bounds.minLat],
-            [bounds.maxLng, bounds.maxLat],
-          ],
-          { padding: 50 }
-        )
-      }
     }
 
     addMarkers()
-  }, [mapLoaded, filteredItems, bounds, getDayColor])
+  }, [mapLoaded, itemsWithCoords, getDayColor])
+
+  // Fit bounds when filtered items change
+  useEffect(() => {
+    if (!mapLoaded || !mapRef.current || !bounds) return
+
+    mapRef.current.fitBounds(
+      [
+        [bounds.minLng, bounds.minLat],
+        [bounds.maxLng, bounds.maxLat],
+      ],
+      { padding: 80, maxZoom: 15, duration: 500 }
+    )
+  }, [mapLoaded, bounds, selectedDay])
 
   if (!MAPBOX_TOKEN) {
     return (
-      <div className="flex h-full items-center justify-center bg-gray-100">
+      <div className="flex h-full items-center justify-center bg-gray-100 dark:bg-gray-800">
         <div className="text-center">
           <MapPin className="mx-auto h-12 w-12 text-gray-400" />
-          <p className="mt-2 text-gray-600">
+          <p className="mt-2 text-gray-600 dark:text-gray-300">
             Map is not configured. Add NEXT_PUBLIC_MAPBOX_TOKEN to your
             environment.
           </p>
@@ -244,8 +248,8 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
       {/* Controls overlay */}
       <div className="absolute left-4 top-4 flex flex-col gap-2">
         {/* Day filter */}
-        <div className="rounded-lg bg-white p-2 shadow-lg">
-          <div className="mb-2 text-xs font-medium text-gray-500">
+        <div className="rounded-lg bg-white dark:bg-gray-800 p-2 shadow-lg">
+          <div className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">
             Filter by day
           </div>
           <div className="flex flex-wrap gap-1">
@@ -253,8 +257,8 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
               onClick={() => setSelectedDay(null)}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 !selectedDay
-                  ? "bg-gray-800 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-gray-800 dark:bg-white text-white dark:text-gray-900"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
               }`}
             >
               All
@@ -268,7 +272,7 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   selectedDay === day.id
                     ? "text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                 }`}
                 style={{
                   backgroundColor:
@@ -310,10 +314,10 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
               {optimizing ? "Optimizing..." : "Optimize Route"}
             </Button>
             {optimizeResult && (
-              <div className="rounded-lg bg-white p-2 text-xs shadow-lg">
-                <p className="font-medium text-gray-900">Optimized!</p>
-                <p className="text-gray-600">{optimizeResult.distanceText}</p>
-                <p className="text-gray-600">{optimizeResult.durationText}</p>
+              <div className="rounded-lg bg-white dark:bg-gray-800 p-2 text-xs shadow-lg">
+                <p className="font-medium text-gray-900 dark:text-white">Optimized!</p>
+                <p className="text-gray-600 dark:text-gray-300">{optimizeResult.distanceText}</p>
+                <p className="text-gray-600 dark:text-gray-300">{optimizeResult.durationText}</p>
               </div>
             )}
           </div>
@@ -322,21 +326,21 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
 
       {/* Selected item popup */}
       {selectedItem && (
-        <div className="absolute bottom-4 left-4 right-4 max-w-md rounded-lg bg-white p-4 shadow-xl sm:left-auto sm:right-4">
+        <div className="absolute bottom-4 left-4 right-4 max-w-md rounded-lg bg-white dark:bg-gray-800 p-4 shadow-xl sm:left-auto sm:right-4">
           <button
             onClick={() => setSelectedItem(null)}
-            className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+            className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             ×
           </button>
-          <h3 className="font-semibold text-gray-900">{selectedItem.title}</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{selectedItem.title}</h3>
           {selectedItem.place?.address && (
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {selectedItem.place.address}
             </p>
           )}
           {selectedItem.notes && (
-            <p className="mt-2 text-sm text-gray-600">{selectedItem.notes}</p>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">{selectedItem.notes}</p>
           )}
           {selectedItem.day_id && (
             <Badge className="mt-2" style={{ backgroundColor: getDayColor(selectedItem.day_id) }}>
@@ -351,11 +355,11 @@ export function MapView({ tripId, days, items, onItemsReorder }: MapViewProps) {
 
       {/* Empty state */}
       {items.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-          <div className="rounded-lg bg-white p-6 text-center shadow-xl">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/10 dark:bg-black/30">
+          <div className="rounded-lg bg-white dark:bg-gray-800 p-6 text-center shadow-xl">
             <MapPin className="mx-auto h-10 w-10 text-gray-400" />
-            <p className="mt-2 font-medium text-gray-900">No places on map</p>
-            <p className="text-sm text-gray-500">
+            <p className="mt-2 font-medium text-gray-900 dark:text-white">No places on map</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Add places with locations to see them on the map
             </p>
           </div>

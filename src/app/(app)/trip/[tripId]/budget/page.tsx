@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { BudgetView } from "@/components/trip/budget/budget-view"
-import type { Expense, Budget, TripMember } from "@/types"
+import type { Expense, Budget, TripMember, Reservation } from "@/types"
 
 async function getBudgetData(tripId: string) {
   const supabase = await createClient()
@@ -23,6 +23,14 @@ async function getBudgetData(tripId: string) {
     .eq("trip_id", tripId)
     .order("occurred_at", { ascending: false })
 
+  // Get reservations for booked costs
+  const { data: reservations } = await supabase
+    .from("reservations")
+    .select("*")
+    .eq("trip_id", tripId)
+    .is("deleted_at", null)
+    .order("start_dt", { ascending: true })
+
   // Get trip members for splitting
   const { data: members } = await supabase
     .from("trip_members")
@@ -40,6 +48,7 @@ async function getBudgetData(tripId: string) {
   return {
     budget: budget as Budget | null,
     expenses: (expenses || []) as Expense[],
+    reservations: (reservations || []) as Reservation[],
     members: (members || []) as TripMember[],
     tripOwnerId: trip?.owner_id,
     currentUserId: user?.id,
@@ -52,13 +61,14 @@ export default async function BudgetPage({
   params: Promise<{ tripId: string }>
 }) {
   const { tripId } = await params
-  const { budget, expenses, members, tripOwnerId, currentUserId } = await getBudgetData(tripId)
+  const { budget, expenses, reservations, members, tripOwnerId, currentUserId } = await getBudgetData(tripId)
 
   return (
     <BudgetView
       tripId={tripId}
       budget={budget}
       expenses={expenses}
+      reservations={reservations}
       members={members}
       tripOwnerId={tripOwnerId}
       currentUserId={currentUserId}

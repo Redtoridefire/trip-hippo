@@ -82,13 +82,14 @@ export interface Place {
   provider_place_id: string
   name: string
   address?: string
+  description?: string
   lat?: number
   lng?: number
   phone?: string
   website?: string
   rating?: number
   price_level?: number
-  opening_hours?: Record<string, string>
+  opening_hours?: string[]
   photos?: string[]
   categories?: string[]
   created_at: string
@@ -170,6 +171,8 @@ export interface ReservationMetadata {
   hotel_address?: string
   travelers?: string[]
   notes?: string
+  cost?: number
+  currency?: string
 }
 
 // Attachments

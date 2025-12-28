@@ -72,8 +72,8 @@ export function ReservationsView({
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Reservations</h2>
-          <p className="text-sm text-gray-600">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Reservations</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Keep all your bookings in one place
           </p>
         </div>
@@ -108,8 +108,8 @@ export function ReservationsView({
           onClick={() => setActiveFilter("all")}
           className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
             activeFilter === "all"
-              ? "bg-gray-900 text-white"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
+              : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
           }`}
         >
           All ({reservations.length})
@@ -124,8 +124,8 @@ export function ReservationsView({
               onClick={() => setActiveFilter(type)}
               className={`flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
                 activeFilter === type
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-gray-900 dark:bg-white text-white dark:text-gray-900"
+                  : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
               }`}
             >
               <Icon className="h-4 w-4" />
@@ -168,19 +168,19 @@ function ReservationCard({ reservation }: { reservation: Reservation }) {
     <Card>
       <CardContent className="flex items-start gap-4 p-4">
         {/* Icon */}
-        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100">
-          <Icon className="h-6 w-6 text-blue-600" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
+          <Icon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
         </div>
 
         {/* Content */}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="font-semibold text-gray-900">
+              <h3 className="font-semibold text-gray-900 dark:text-white">
                 {reservation.title || getDefaultTitle(reservation)}
               </h3>
               {reservation.provider && (
-                <p className="text-sm text-gray-600">{reservation.provider}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{reservation.provider}</p>
               )}
             </div>
             <Badge variant="outline" className="capitalize">
@@ -189,7 +189,7 @@ function ReservationCard({ reservation }: { reservation: Reservation }) {
           </div>
 
           {/* Details */}
-          <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600">
+          <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
             {reservation.start_dt && (
               <span className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
@@ -205,14 +205,19 @@ function ReservationCard({ reservation }: { reservation: Reservation }) {
             {reservation.confirmation && (
               <span className="font-mono">#{reservation.confirmation}</span>
             )}
+            {meta.cost && (
+              <span className="font-semibold text-green-600 dark:text-green-400">
+                ${meta.cost.toLocaleString()}
+              </span>
+            )}
           </div>
 
           {/* Type-specific metadata */}
           {reservation.type === "flight" && meta.flight_number && (
-            <div className="mt-2 rounded-lg bg-gray-50 p-2 text-sm">
-              <span className="font-medium">{meta.flight_number}</span>
+            <div className="mt-2 rounded-lg bg-gray-50 dark:bg-gray-700 p-2 text-sm">
+              <span className="font-medium text-gray-900 dark:text-white">{meta.flight_number}</span>
               {meta.departure_airport && meta.arrival_airport && (
-                <span className="text-gray-600">
+                <span className="text-gray-600 dark:text-gray-400">
                   {" "}
                   {meta.departure_airport} → {meta.arrival_airport}
                 </span>
@@ -221,7 +226,7 @@ function ReservationCard({ reservation }: { reservation: Reservation }) {
           )}
 
           {reservation.type === "lodging" && meta.hotel_address && (
-            <p className="mt-2 text-sm text-gray-600">{meta.hotel_address}</p>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">{meta.hotel_address}</p>
           )}
 
           {/* Attachments */}
@@ -233,7 +238,7 @@ function ReservationCard({ reservation }: { reservation: Reservation }) {
                   href={att.storage_path}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-700 hover:bg-gray-200"
+                  className="flex items-center gap-1 rounded-full bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   <FileText className="h-3 w-3" />
                   {att.filename || "Attachment"}
@@ -267,10 +272,10 @@ function getDefaultTitle(reservation: Reservation): string {
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <div className="rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+    <div className="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-8 text-center">
       <Plane className="mx-auto h-10 w-10 text-gray-400" />
-      <h3 className="mt-2 font-medium text-gray-900">No reservations yet</h3>
-      <p className="mt-1 text-sm text-gray-600">
+      <h3 className="mt-2 font-medium text-gray-900 dark:text-white">No reservations yet</h3>
+      <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
         Add your flight, hotel, and other bookings to keep everything organized
       </p>
       <Button onClick={onAdd} className="mt-4">

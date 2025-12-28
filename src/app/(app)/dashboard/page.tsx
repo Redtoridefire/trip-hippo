@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { CreateTripButton } from "@/components/trips/create-trip-button"
-import { Plus, Map, Calendar, Clock, MapPin, ArrowRight, Plane } from "lucide-react"
+import { Plus, Map, Calendar, Clock, MapPin, ArrowRight, Plane, Globe, TrendingUp, DollarSign, CheckCircle } from "lucide-react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,6 +14,14 @@ interface Trip {
   end_date: string | null
   cover_image: string | null
   updated_at: string
+}
+
+interface TripStats {
+  totalTrips: number
+  completedTrips: number
+  upcomingTrips: number
+  totalDays: number
+  destinations: string[]
 }
 
 async function getTrips() {
@@ -87,8 +95,38 @@ function getTripDuration(startDate: string, endDate: string): number {
   return Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1
 }
 
+function calculateStats(trips: Trip[]): TripStats {
+  const destinations = new Set<string>()
+  let totalDays = 0
+  let completedTrips = 0
+  let upcomingTrips = 0
+
+  trips.forEach(trip => {
+    const status = getTripStatus(trip)
+    if (status === "past") completedTrips++
+    if (status === "upcoming") upcomingTrips++
+
+    if (trip.home_base) {
+      destinations.add(trip.home_base)
+    }
+
+    if (trip.start_date && trip.end_date) {
+      totalDays += getTripDuration(trip.start_date, trip.end_date)
+    }
+  })
+
+  return {
+    totalTrips: trips.length,
+    completedTrips,
+    upcomingTrips,
+    totalDays,
+    destinations: Array.from(destinations),
+  }
+}
+
 export default async function DashboardPage() {
   const trips = await getTrips()
+  const stats = calculateStats(trips)
 
   // Categorize trips
   const categorizedTrips = trips.reduce((acc, trip) => {
@@ -131,6 +169,108 @@ export default async function DashboardPage() {
         <EmptyState />
       ) : (
         <div className="space-y-8">
+          {/* Stats Overview */}
+          <section>
+            <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+              Travel Overview
+            </h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <StatCard
+                icon={<Globe className="h-5 w-5 text-blue-600" />}
+                label="Total Trips"
+                value={stats.totalTrips}
+                subtext={`${stats.destinations.length} destinations`}
+              />
+              <StatCard
+                icon={<CheckCircle className="h-5 w-5 text-green-600" />}
+                label="Completed"
+                value={stats.completedTrips}
+                subtext="trips finished"
+              />
+              <StatCard
+                icon={<Plane className="h-5 w-5 text-purple-600" />}
+                label="Upcoming"
+                value={stats.upcomingTrips}
+                subtext="trips planned"
+              />
+              <StatCard
+                icon={<Calendar className="h-5 w-5 text-orange-600" />}
+                label="Days Traveled"
+                value={stats.totalDays}
+                subtext="total adventure days"
+              />
+            </div>
+          </section>
+
+          {/* Trip Distribution Chart */}
+          {trips.length > 0 && (
+            <section>
+              <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+                Trip Statistics
+              </h2>
+              <Card className="p-6 dark:bg-gray-800">
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {/* Trip Status Distribution */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                      Trip Status Distribution
+                    </h3>
+                    <div className="space-y-3">
+                      <ProgressBar
+                        label="Completed"
+                        value={stats.completedTrips}
+                        total={stats.totalTrips}
+                        color="bg-green-500"
+                      />
+                      <ProgressBar
+                        label="Upcoming"
+                        value={stats.upcomingTrips}
+                        total={stats.totalTrips}
+                        color="bg-blue-500"
+                      />
+                      <ProgressBar
+                        label="In Progress"
+                        value={ongoingTrips.length}
+                        total={stats.totalTrips}
+                        color="bg-purple-500"
+                      />
+                      <ProgressBar
+                        label="Drafts"
+                        value={draftTrips.length}
+                        total={stats.totalTrips}
+                        color="bg-yellow-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Destinations List */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4">
+                      Your Destinations
+                    </h3>
+                    {stats.destinations.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {stats.destinations.map((dest, i) => (
+                          <span
+                            key={i}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-blue-100 dark:bg-blue-900 px-3 py-1 text-sm text-blue-700 dark:text-blue-300"
+                          >
+                            <MapPin className="h-3.5 w-3.5" />
+                            {dest}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No destinations yet. Add a home base to your trips!
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </section>
+          )}
+
           {/* Featured Trip Spotlight */}
           {featuredTrip && (
             <FeaturedTrip trip={featuredTrip} />
@@ -197,6 +337,62 @@ export default async function DashboardPage() {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function StatCard({
+  icon,
+  label,
+  value,
+  subtext,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: number
+  subtext: string
+}) {
+  return (
+    <Card className="p-4 dark:bg-gray-800">
+      <div className="flex items-center gap-3">
+        <div className="rounded-lg bg-gray-100 dark:bg-gray-700 p-2.5">
+          {icon}
+        </div>
+        <div>
+          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-gray-500 dark:text-gray-500">{subtext}</p>
+    </Card>
+  )
+}
+
+function ProgressBar({
+  label,
+  value,
+  total,
+  color,
+}: {
+  label: string
+  value: number
+  total: number
+  color: string
+}) {
+  const percentage = total > 0 ? (value / total) * 100 : 0
+
+  return (
+    <div>
+      <div className="flex justify-between text-sm mb-1">
+        <span className="text-gray-700 dark:text-gray-300">{label}</span>
+        <span className="text-gray-500 dark:text-gray-400">{value}</span>
+      </div>
+      <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+        <div
+          className={`h-full ${color} rounded-full transition-all duration-500`}
+          style={{ width: `${percentage}%` }}
+        />
+      </div>
     </div>
   )
 }
