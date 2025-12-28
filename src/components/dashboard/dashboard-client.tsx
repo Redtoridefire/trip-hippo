@@ -25,25 +25,68 @@ import {
   Building2,
   Car,
   Train,
+  ChevronDown,
+  ChevronUp,
+  DollarSign,
+  ListTodo,
+  BarChart3,
+  PieChart,
+  Wallet,
+  Utensils,
+  ShoppingBag,
+  Ticket,
+  CircleDot,
+  FileText,
+  Users,
+  CheckSquare,
+  Square,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Progress } from "@/components/ui/progress"
 import { formatDateRange } from "@/lib/utils"
-import type { Trip, Reservation, ReservationType } from "@/types"
+import type { Trip, Reservation, ReservationType, ChecklistItem } from "@/types"
+
+interface TripStats {
+  totalBudget: number
+  totalSpent: number
+  reservationCount: number
+  itineraryItemCount: number
+  checklistTotal: number
+  checklistCompleted: number
+}
+
+interface TripBreakdown {
+  active: Trip[]
+  upcoming: Trip[]
+  completed: Trip[]
+  draft: Trip[]
+}
+
+interface TravelInsights {
+  topDestinations: { name: string; count: number }[]
+  spendingByCategory: { category: string; amount: number }[]
+  totalDaysTraveled: number
+  averageTripDuration: number
+  upcomingReservationsByType: { type: string; count: number }[]
+}
 
 interface DashboardData {
-  upcomingTrip: Trip | null
-  ongoingTrip: Trip | null
+  upcomingTrip: (Trip & { stats?: TripStats }) | null
+  ongoingTrip: (Trip & { stats?: TripStats }) | null
   upcomingReservations: Reservation[]
-  recentTrips: Trip[]
+  recentTrips: (Trip & { stats?: TripStats })[]
+  tripBreakdown: TripBreakdown
   stats: {
     totalTrips: number
     upcomingTrips: number
     totalDestinations: number
     daysUntilNextTrip: number | null
   }
+  insights: TravelInsights
+  upcomingChecklist: ChecklistItem[]
 }
 
 interface WeatherData {
@@ -77,8 +120,17 @@ const reservationIcons: Record<ReservationType, typeof Plane> = {
   other: Luggage,
 }
 
+const categoryIcons: Record<string, typeof Utensils> = {
+  food: Utensils,
+  transport: Car,
+  lodging: Building2,
+  activities: Ticket,
+  shopping: ShoppingBag,
+  other: DollarSign,
+}
+
 export function DashboardClient({ data }: { data: DashboardData }) {
-  const { upcomingTrip, ongoingTrip, upcomingReservations, recentTrips, stats } = data
+  const { upcomingTrip, ongoingTrip, upcomingReservations, recentTrips, tripBreakdown, stats, insights, upcomingChecklist } = data
   const featuredTrip = ongoingTrip || upcomingTrip
 
   const [weather, setWeather] = useState<WeatherData | null>(null)
@@ -88,7 +140,11 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   const [flightLoading, setFlightLoading] = useState(false)
   const [flightError, setFlightError] = useState<string | null>(null)
 
-  // Fetch weather for featured trip destination
+  // Expandable state
+  const [expandedStats, setExpandedStats] = useState<Record<string, boolean>>({})
+  const [expandedReservations, setExpandedReservations] = useState<Record<string, boolean>>({})
+  const [showInsights, setShowInsights] = useState(false)
+
   useEffect(() => {
     if (featuredTrip?.home_base) {
       fetchWeather(featuredTrip.home_base)
@@ -127,6 +183,14 @@ export function DashboardClient({ data }: { data: DashboardData }) {
     }
   }
 
+  const toggleStat = (key: string) => {
+    setExpandedStats(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const toggleReservation = (id: string) => {
+    setExpandedReservations(prev => ({ ...prev, [id]: !prev[id] }))
+  }
+
   return (
     <div className="p-6 lg:p-8 space-y-6">
       {/* Header */}
@@ -145,40 +209,144 @@ export function DashboardClient({ data }: { data: DashboardData }) {
         </Link>
       </div>
 
-      {/* Quick Stats */}
+      {/* Expandable Quick Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+        <ExpandableStatCard
           icon={<Globe className="h-5 w-5 text-blue-600 dark:text-blue-400" />}
           label="Total Trips"
           value={stats.totalTrips}
           color="blue"
-        />
-        <StatCard
+          isExpanded={expandedStats.totalTrips}
+          onToggle={() => toggleStat("totalTrips")}
+        >
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <CircleDot className="h-3 w-3 text-green-500" />
+                Active
+              </span>
+              <span className="font-medium text-gray-900 dark:text-white">{tripBreakdown.active.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <Plane className="h-3 w-3 text-blue-500" />
+                Upcoming
+              </span>
+              <span className="font-medium text-gray-900 dark:text-white">{tripBreakdown.upcoming.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <CheckCircle2 className="h-3 w-3 text-gray-500" />
+                Completed
+              </span>
+              <span className="font-medium text-gray-900 dark:text-white">{tripBreakdown.completed.length}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                <FileText className="h-3 w-3 text-orange-500" />
+                Drafts
+              </span>
+              <span className="font-medium text-gray-900 dark:text-white">{tripBreakdown.draft.length}</span>
+            </div>
+          </div>
+        </ExpandableStatCard>
+
+        <ExpandableStatCard
           icon={<Plane className="h-5 w-5 text-purple-600 dark:text-purple-400" />}
           label="Upcoming"
           value={stats.upcomingTrips}
           color="purple"
-        />
-        <StatCard
+          isExpanded={expandedStats.upcoming}
+          onToggle={() => toggleStat("upcoming")}
+        >
+          <div className="mt-3 space-y-2 text-sm max-h-32 overflow-y-auto">
+            {tripBreakdown.upcoming.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-2">No upcoming trips</p>
+            ) : (
+              tripBreakdown.upcoming.slice(0, 4).map((trip) => (
+                <Link
+                  key={trip.id}
+                  href={`/trip/${trip.id}/itinerary`}
+                  className="flex justify-between items-center p-2 rounded hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                >
+                  <span className="truncate text-gray-900 dark:text-white">{trip.name}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                    {trip.start_date && format(new Date(trip.start_date), "MMM d")}
+                  </span>
+                </Link>
+              ))
+            )}
+          </div>
+        </ExpandableStatCard>
+
+        <ExpandableStatCard
           icon={<MapPin className="h-5 w-5 text-green-600 dark:text-green-400" />}
           label="Destinations"
           value={stats.totalDestinations}
           color="green"
-        />
-        <StatCard
+          isExpanded={expandedStats.destinations}
+          onToggle={() => toggleStat("destinations")}
+        >
+          <div className="mt-3 space-y-2 text-sm max-h-32 overflow-y-auto">
+            {insights.topDestinations.length === 0 ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-2">No destinations yet</p>
+            ) : (
+              insights.topDestinations.map((dest, i) => (
+                <div key={dest.name} className="flex justify-between items-center">
+                  <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                    <span className="text-xs font-medium text-green-600">#{i + 1}</span>
+                    {dest.name}
+                  </span>
+                  <span className="font-medium text-gray-900 dark:text-white">{dest.count} {dest.count === 1 ? 'trip' : 'trips'}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </ExpandableStatCard>
+
+        <ExpandableStatCard
           icon={<Timer className="h-5 w-5 text-orange-600 dark:text-orange-400" />}
           label="Days to Next Trip"
           value={stats.daysUntilNextTrip ?? "—"}
           color="orange"
-        />
+          isExpanded={expandedStats.countdown}
+          onToggle={() => toggleStat("countdown")}
+        >
+          <div className="mt-3 space-y-2 text-sm">
+            {upcomingTrip ? (
+              <>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600 dark:text-gray-400">Trip</span>
+                  <span className="font-medium text-gray-900 dark:text-white truncate ml-2">{upcomingTrip.name}</span>
+                </div>
+                {upcomingTrip.home_base && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Destination</span>
+                    <span className="font-medium text-gray-900 dark:text-white">{upcomingTrip.home_base}</span>
+                  </div>
+                )}
+                {upcomingTrip.start_date && upcomingTrip.end_date && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600 dark:text-gray-400">Dates</span>
+                    <span className="font-medium text-gray-900 dark:text-white text-xs">
+                      {formatDateRange(upcomingTrip.start_date, upcomingTrip.end_date)}
+                    </span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-2">No upcoming trips planned</p>
+            )}
+          </div>
+        </ExpandableStatCard>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Column - Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Featured Trip */}
+          {/* Enhanced Featured Trip */}
           {featuredTrip && (
-            <FeaturedTripCard trip={featuredTrip} isOngoing={!!ongoingTrip} />
+            <EnhancedFeaturedTripCard trip={featuredTrip} isOngoing={!!ongoingTrip} />
           )}
 
           {/* Weather Widget */}
@@ -186,22 +354,127 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             <WeatherWidget weather={weather} loading={weatherLoading} />
           )}
 
-          {/* Upcoming Reservations */}
+          {/* Enhanced Upcoming Reservations */}
           {upcomingReservations.length > 0 && (
             <Card className="dark:bg-gray-800">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Calendar className="h-5 w-5 text-blue-600" />
-                  Upcoming Reservations
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-blue-600" />
+                    Upcoming Reservations
+                  </span>
+                  <Badge variant="secondary">{upcomingReservations.length}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {upcomingReservations.map((reservation) => (
-                    <ReservationItem key={reservation.id} reservation={reservation} />
+                    <ExpandableReservationItem
+                      key={reservation.id}
+                      reservation={reservation}
+                      isExpanded={expandedReservations[reservation.id]}
+                      onToggle={() => toggleReservation(reservation.id)}
+                    />
                   ))}
                 </div>
               </CardContent>
+            </Card>
+          )}
+
+          {/* Travel Insights */}
+          {(insights.spendingByCategory.length > 0 || insights.totalDaysTraveled > 0) && (
+            <Card className="dark:bg-gray-800">
+              <CardHeader>
+                <button
+                  className="w-full flex items-center justify-between text-base"
+                  onClick={() => setShowInsights(!showInsights)}
+                >
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-indigo-600" />
+                    Travel Insights
+                  </CardTitle>
+                  {showInsights ? (
+                    <ChevronUp className="h-5 w-5 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+              </CardHeader>
+              {showInsights && (
+                <CardContent className="space-y-6">
+                  {/* Stats Row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="text-center p-3 rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
+                      <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{insights.totalDaysTraveled}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Days Traveled</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
+                      <p className="text-2xl font-bold text-green-600 dark:text-green-400">{insights.averageTripDuration}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Avg Trip Length</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{tripBreakdown.completed.length}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Trips Completed</p>
+                    </div>
+                    <div className="text-center p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
+                      <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{insights.topDestinations.length}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Unique Places</p>
+                    </div>
+                  </div>
+
+                  {/* Spending Breakdown */}
+                  {insights.spendingByCategory.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <PieChart className="h-4 w-4" />
+                        Spending by Category
+                      </h4>
+                      <div className="space-y-2">
+                        {insights.spendingByCategory.map((cat) => {
+                          const Icon = categoryIcons[cat.category] || DollarSign
+                          const total = insights.spendingByCategory.reduce((sum, c) => sum + c.amount, 0)
+                          const percentage = total > 0 ? (cat.amount / total) * 100 : 0
+                          return (
+                            <div key={cat.category} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400 capitalize">
+                                  <Icon className="h-4 w-4" />
+                                  {cat.category}
+                                </span>
+                                <span className="font-medium text-gray-900 dark:text-white">
+                                  ${cat.amount.toLocaleString()}
+                                </span>
+                              </div>
+                              <Progress value={percentage} className="h-2" />
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reservation Types */}
+                  {insights.upcomingReservationsByType.length > 0 && (
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                        <ListTodo className="h-4 w-4" />
+                        Upcoming Reservation Types
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {insights.upcomingReservationsByType.map((item) => {
+                          const Icon = reservationIcons[item.type as ReservationType] || Luggage
+                          return (
+                            <Badge key={item.type} variant="secondary" className="flex items-center gap-1.5 capitalize">
+                              <Icon className="h-3 w-3" />
+                              {item.type}: {item.count}
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              )}
             </Card>
           )}
         </div>
@@ -240,6 +513,38 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             </CardContent>
           </Card>
 
+          {/* Upcoming Checklist Items */}
+          {upcomingChecklist.length > 0 && (
+            <Card className="dark:bg-gray-800">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <ListTodo className="h-5 w-5 text-amber-600" />
+                  To-Do Before Travel
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {upcomingChecklist.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                    >
+                      <Square className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                        {item.title}
+                      </span>
+                      {item.list_name && (
+                        <Badge variant="outline" className="text-xs">
+                          {item.list_name}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Quick Actions */}
           <Card className="dark:bg-gray-800">
             <CardHeader>
@@ -264,7 +569,7 @@ export function DashboardClient({ data }: { data: DashboardData }) {
             </CardContent>
           </Card>
 
-          {/* Recent Trips */}
+          {/* Enhanced Recent Trips */}
           {recentTrips.length > 0 && (
             <Card className="dark:bg-gray-800">
               <CardHeader>
@@ -279,21 +584,45 @@ export function DashboardClient({ data }: { data: DashboardData }) {
                     <Link
                       key={trip.id}
                       href={`/trip/${trip.id}/itinerary`}
-                      className="flex items-center gap-3 rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      className="block rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                        {trip.cover_image ? (
-                          <img src={trip.cover_image} alt="" className="h-full w-full rounded-lg object-cover" />
-                        ) : (
-                          <MapPin className="h-5 w-5 text-white" />
-                        )}
+                      <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                          {trip.cover_image ? (
+                            <img src={trip.cover_image} alt="" className="h-full w-full rounded-lg object-cover" />
+                          ) : (
+                            <MapPin className="h-5 w-5 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{trip.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
+                            {trip.end_date && formatDistanceToNow(new Date(trip.end_date), { addSuffix: true })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">{trip.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {trip.end_date && formatDistanceToNow(new Date(trip.end_date), { addSuffix: true })}
-                        </p>
-                      </div>
+                      {trip.stats && (
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                          {trip.stats.totalSpent > 0 && (
+                            <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                              <DollarSign className="h-3 w-3" />
+                              {trip.stats.totalSpent.toLocaleString()}
+                            </span>
+                          )}
+                          {trip.stats.itineraryItemCount > 0 && (
+                            <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                              <MapPin className="h-3 w-3" />
+                              {trip.stats.itineraryItemCount} places
+                            </span>
+                          )}
+                          {trip.stats.reservationCount > 0 && (
+                            <span className="flex items-center gap-1 text-purple-600 dark:text-purple-400">
+                              <Ticket className="h-3 w-3" />
+                              {trip.stats.reservationCount} bookings
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -324,16 +653,22 @@ export function DashboardClient({ data }: { data: DashboardData }) {
   )
 }
 
-function StatCard({
+function ExpandableStatCard({
   icon,
   label,
   value,
   color,
+  isExpanded,
+  onToggle,
+  children,
 }: {
   icon: React.ReactNode
   label: string
   value: number | string
   color: "blue" | "purple" | "green" | "orange"
+  isExpanded: boolean
+  onToggle: () => void
+  children: React.ReactNode
 }) {
   const bgColors = {
     blue: "bg-blue-50 dark:bg-blue-900/20",
@@ -343,24 +678,46 @@ function StatCard({
   }
 
   return (
-    <Card className={`${bgColors[color]} border-0`}>
-      <CardContent className="flex items-center gap-3 p-4">
-        <div className="rounded-lg bg-white dark:bg-gray-800 p-2.5 shadow-sm">
-          {icon}
+    <Card className={`${bgColors[color]} border-0 cursor-pointer transition-all hover:shadow-md`} onClick={onToggle}>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-white dark:bg-gray-800 p-2.5 shadow-sm">
+              {icon}
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
+            </div>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-5 w-5 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-5 w-5 text-gray-400" />
+          )}
         </div>
-        <div>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
-        </div>
+        {isExpanded && (
+          <div className="border-t border-gray-200 dark:border-gray-700 mt-3 pt-3" onClick={(e) => e.stopPropagation()}>
+            {children}
+          </div>
+        )}
       </CardContent>
     </Card>
   )
 }
 
-function FeaturedTripCard({ trip, isOngoing }: { trip: Trip; isOngoing: boolean }) {
+function EnhancedFeaturedTripCard({ trip, isOngoing }: { trip: Trip & { stats?: TripStats }; isOngoing: boolean }) {
   const daysUntil = trip.start_date
     ? Math.ceil((new Date(trip.start_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : null
+
+  const stats = trip.stats
+  const budgetProgress = stats && stats.totalBudget > 0
+    ? Math.min((stats.totalSpent / stats.totalBudget) * 100, 100)
+    : 0
+  const checklistProgress = stats && stats.checklistTotal > 0
+    ? (stats.checklistCompleted / stats.checklistTotal) * 100
+    : 0
 
   return (
     <Link href={`/trip/${trip.id}/itinerary`}>
@@ -403,6 +760,78 @@ function FeaturedTripCard({ trip, isOngoing }: { trip: Trip; isOngoing: boolean 
               </span>
             )}
           </div>
+
+          {/* Trip Stats Grid */}
+          {stats && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {stats.reservationCount > 0 && (
+                <div className="bg-white/10 rounded-lg p-2 text-center">
+                  <p className="text-xl font-bold">{stats.reservationCount}</p>
+                  <p className="text-xs text-white/70">Bookings</p>
+                </div>
+              )}
+              {stats.itineraryItemCount > 0 && (
+                <div className="bg-white/10 rounded-lg p-2 text-center">
+                  <p className="text-xl font-bold">{stats.itineraryItemCount}</p>
+                  <p className="text-xs text-white/70">Activities</p>
+                </div>
+              )}
+              {stats.totalBudget > 0 && (
+                <div className="bg-white/10 rounded-lg p-2 text-center">
+                  <p className="text-xl font-bold">${stats.totalSpent.toLocaleString()}</p>
+                  <p className="text-xs text-white/70">of ${stats.totalBudget.toLocaleString()}</p>
+                </div>
+              )}
+              {stats.checklistTotal > 0 && (
+                <div className="bg-white/10 rounded-lg p-2 text-center">
+                  <p className="text-xl font-bold">{stats.checklistCompleted}/{stats.checklistTotal}</p>
+                  <p className="text-xs text-white/70">Checklist</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Progress bars */}
+          {stats && (stats.totalBudget > 0 || stats.checklistTotal > 0) && (
+            <div className="mt-4 space-y-2">
+              {stats.totalBudget > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-white/70 mb-1">
+                    <span className="flex items-center gap-1">
+                      <Wallet className="h-3 w-3" />
+                      Budget
+                    </span>
+                    <span>{Math.round(budgetProgress)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${
+                        budgetProgress > 90 ? "bg-red-400" : budgetProgress > 70 ? "bg-yellow-400" : "bg-green-400"
+                      }`}
+                      style={{ width: `${budgetProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              {stats.checklistTotal > 0 && (
+                <div>
+                  <div className="flex justify-between text-xs text-white/70 mb-1">
+                    <span className="flex items-center gap-1">
+                      <CheckSquare className="h-3 w-3" />
+                      Preparation
+                    </span>
+                    <span>{Math.round(checklistProgress)}%</span>
+                  </div>
+                  <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-400 rounded-full transition-all"
+                      style={{ width: `${checklistProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mt-6 flex items-center justify-between">
             {!isOngoing && daysUntil !== null && daysUntil > 0 && (
@@ -548,26 +977,122 @@ function FlightStatusCard({ flight }: { flight: FlightStatus }) {
   )
 }
 
-function ReservationItem({ reservation }: { reservation: Reservation }) {
+function ExpandableReservationItem({
+  reservation,
+  isExpanded,
+  onToggle,
+}: {
+  reservation: Reservation
+  isExpanded: boolean
+  onToggle: () => void
+}) {
   const Icon = reservationIcons[reservation.type] || Luggage
 
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 p-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
-        <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-gray-900 dark:text-white truncate">
-          {reservation.title || reservation.provider || reservation.type}
-        </p>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          {reservation.start_dt && format(new Date(reservation.start_dt), "MMM d, h:mm a")}
-        </p>
-      </div>
-      {reservation.confirmation && (
-        <Badge variant="outline" className="text-xs font-mono">
-          {reservation.confirmation}
-        </Badge>
+    <div
+      className={`rounded-lg bg-gray-50 dark:bg-gray-700/50 transition-all ${
+        isExpanded ? "ring-2 ring-blue-500" : ""
+      }`}
+    >
+      <button
+        className="w-full flex items-center gap-3 p-3"
+        onClick={onToggle}
+      >
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30 flex-shrink-0">
+          <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div className="flex-1 min-w-0 text-left">
+          <p className="font-medium text-gray-900 dark:text-white truncate">
+            {reservation.title || reservation.provider || reservation.type}
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {reservation.start_dt && format(new Date(reservation.start_dt), "MMM d, h:mm a")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {reservation.confirmation && (
+            <Badge variant="outline" className="text-xs font-mono hidden sm:flex">
+              {reservation.confirmation}
+            </Badge>
+          )}
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4 text-gray-400" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-gray-400" />
+          )}
+        </div>
+      </button>
+
+      {isExpanded && (
+        <div className="px-3 pb-3 pt-0 space-y-2 border-t border-gray-200 dark:border-gray-600 mt-2">
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            {reservation.confirmation && (
+              <div className="sm:hidden">
+                <p className="text-gray-500 dark:text-gray-400 text-xs">Confirmation</p>
+                <p className="font-mono text-gray-900 dark:text-white">{reservation.confirmation}</p>
+              </div>
+            )}
+            {reservation.provider && (
+              <div>
+                <p className="text-gray-500 dark:text-gray-400 text-xs">Provider</p>
+                <p className="text-gray-900 dark:text-white">{reservation.provider}</p>
+              </div>
+            )}
+            {reservation.start_dt && (
+              <div>
+                <p className="text-gray-500 dark:text-gray-400 text-xs">Check-in / Start</p>
+                <p className="text-gray-900 dark:text-white">
+                  {format(new Date(reservation.start_dt), "MMM d, yyyy h:mm a")}
+                </p>
+              </div>
+            )}
+            {reservation.end_dt && (
+              <div>
+                <p className="text-gray-500 dark:text-gray-400 text-xs">Check-out / End</p>
+                <p className="text-gray-900 dark:text-white">
+                  {format(new Date(reservation.end_dt), "MMM d, yyyy h:mm a")}
+                </p>
+              </div>
+            )}
+            {reservation.metadata?.cost && (
+              <div>
+                <p className="text-gray-500 dark:text-gray-400 text-xs">Cost</p>
+                <p className="text-green-600 dark:text-green-400 font-medium">
+                  ${reservation.metadata.cost.toLocaleString()}
+                  {reservation.metadata.currency && ` ${reservation.metadata.currency}`}
+                </p>
+              </div>
+            )}
+            {reservation.type === "flight" && reservation.metadata?.flight_number && (
+              <>
+                <div>
+                  <p className="text-gray-500 dark:text-gray-400 text-xs">Flight</p>
+                  <p className="text-gray-900 dark:text-white">{reservation.metadata.flight_number}</p>
+                </div>
+                {reservation.metadata.departure_airport && (
+                  <div>
+                    <p className="text-gray-500 dark:text-gray-400 text-xs">Route</p>
+                    <p className="text-gray-900 dark:text-white">
+                      {reservation.metadata.departure_airport} → {reservation.metadata.arrival_airport}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+            {reservation.type === "lodging" && reservation.metadata?.hotel_name && (
+              <div className="col-span-2">
+                <p className="text-gray-500 dark:text-gray-400 text-xs">Address</p>
+                <p className="text-gray-900 dark:text-white">{reservation.metadata.hotel_address}</p>
+              </div>
+            )}
+          </div>
+          {reservation.metadata?.notes && (
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-600">
+              <p className="text-gray-500 dark:text-gray-400 text-xs">Notes</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300">{reservation.metadata.notes}</p>
+            </div>
+          )}
+        </div>
       )}
     </div>
   )
