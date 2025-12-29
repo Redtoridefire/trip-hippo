@@ -9,6 +9,14 @@ interface PlaceResult {
   address: string
   lat?: number
   lng?: number
+  description?: string
+  phone?: string
+  website?: string
+  rating?: number
+  priceLevel?: number
+  openingHours?: string[]
+  photos?: string[]
+  types?: string[]
 }
 
 interface PlaceSuggestion {
@@ -90,13 +98,14 @@ export function PlaceSearch({
     setQuery(suggestion.name)
     setShowSuggestions(false)
     setSuggestions([])
+    setIsLoading(true)
 
-    // Get full place details
+    // Get full place details from the details endpoint
     try {
-      const response = await fetch(`/api/places/search?query=${encodeURIComponent(suggestion.name)}`)
+      const response = await fetch(`/api/places/${suggestion.placeId}`)
       if (response.ok) {
         const data = await response.json()
-        const place = data.places?.[0]
+        const place = data.place
         if (place) {
           onSelect({
             id: place.id,
@@ -104,7 +113,16 @@ export function PlaceSearch({
             address: place.address,
             lat: place.lat,
             lng: place.lng,
+            description: place.description,
+            phone: place.phone,
+            website: place.website,
+            rating: place.rating,
+            priceLevel: place.priceLevel,
+            openingHours: place.openingHours,
+            photos: place.photos,
+            types: place.types,
           })
+          setIsLoading(false)
           return
         }
       }
@@ -112,6 +130,7 @@ export function PlaceSearch({
       console.error("Error getting place details:", error)
     }
 
+    setIsLoading(false)
     // Fallback: just use the suggestion data
     onSelect({
       id: suggestion.placeId,
@@ -129,7 +148,7 @@ export function PlaceSearch({
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
         <input
           ref={inputRef}
           type="text"
@@ -137,15 +156,15 @@ export function PlaceSearch({
           onChange={(e) => handleInputChange(e.target.value)}
           onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
           placeholder={placeholder}
-          className="w-full rounded-lg border border-gray-300 bg-white py-2 pl-10 pr-10 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 py-2 pl-10 pr-10 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {isLoading ? (
-          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400" />
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-gray-400 dark:text-gray-500" />
         ) : query ? (
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
             <X className="h-4 w-4" />
           </button>
@@ -154,21 +173,21 @@ export function PlaceSearch({
 
       {/* Suggestions dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+        <div className="absolute z-50 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 py-1 shadow-lg">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion.placeId}
               type="button"
               onClick={() => handleSelectSuggestion(suggestion)}
-              className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-gray-50"
+              className="flex w-full items-start gap-3 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+              <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400 dark:text-gray-500" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-900">
+                <p className="truncate text-sm font-medium text-gray-900 dark:text-white">
                   {suggestion.name}
                 </p>
                 {suggestion.address && (
-                  <p className="truncate text-xs text-gray-500">
+                  <p className="truncate text-xs text-gray-500 dark:text-gray-400">
                     {suggestion.address}
                   </p>
                 )}

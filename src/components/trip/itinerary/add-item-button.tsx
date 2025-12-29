@@ -14,6 +14,14 @@ interface SelectedPlace {
   address: string
   lat?: number
   lng?: number
+  description?: string
+  phone?: string
+  website?: string
+  rating?: number
+  priceLevel?: number
+  openingHours?: string[]
+  photos?: string[]
+  types?: string[]
 }
 
 interface AddItemButtonProps {
@@ -48,9 +56,10 @@ export function AddItemButton({
 
     const { data: { user } } = await supabase.auth.getUser()
 
-    // If we have a selected place with coordinates, store it in the places table first
+    // If we have a selected place, store it in the places table with all details
     let placeId = null
-    if (selectedPlace?.lat && selectedPlace?.lng) {
+    let placeData = null
+    if (selectedPlace?.id) {
       const { data: place } = await supabase
         .from("places")
         .upsert({
@@ -58,8 +67,16 @@ export function AddItemButton({
           provider_place_id: selectedPlace.id,
           name: selectedPlace.name,
           address: selectedPlace.address,
+          description: selectedPlace.description || null,
           lat: selectedPlace.lat,
           lng: selectedPlace.lng,
+          phone: selectedPlace.phone || null,
+          website: selectedPlace.website || null,
+          rating: selectedPlace.rating || null,
+          price_level: selectedPlace.priceLevel || null,
+          opening_hours: selectedPlace.openingHours || null,
+          photos: selectedPlace.photos || null,
+          categories: selectedPlace.types || null,
         }, {
           onConflict: "provider,provider_place_id",
         })
@@ -67,6 +84,7 @@ export function AddItemButton({
         .single()
 
       placeId = place?.id
+      placeData = place
     }
 
     const itemData = {
@@ -92,7 +110,13 @@ export function AddItemButton({
       return
     }
 
-    onItemCreated(data)
+    // Include place data in the created item
+    const itemWithPlace = {
+      ...data,
+      place: placeData,
+    }
+
+    onItemCreated(itemWithPlace)
     resetForm()
   }
 
@@ -120,26 +144,26 @@ export function AddItemButton({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+    <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 p-4">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="font-medium text-gray-900">Add new item</h3>
+        <h3 className="font-medium text-gray-900 dark:text-white">Add new item</h3>
         <button
           onClick={resetForm}
-          className="rounded p-1 text-gray-500 hover:bg-gray-200"
+          className="rounded p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Mode toggle */}
-      <div className="mb-3 flex rounded-lg border border-gray-200 bg-white p-1">
+      <div className="mb-3 flex rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 p-1">
         <button
           type="button"
           onClick={() => setMode("search")}
           className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             mode === "search"
-              ? "bg-blue-100 text-blue-700"
-              : "text-gray-600 hover:text-gray-900"
+              ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           }`}
         >
           Search Places
@@ -149,8 +173,8 @@ export function AddItemButton({
           onClick={() => setMode("manual")}
           className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
             mode === "manual"
-              ? "bg-blue-100 text-blue-700"
-              : "text-gray-600 hover:text-gray-900"
+              ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300"
+              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
           }`}
         >
           Manual Entry
@@ -165,10 +189,10 @@ export function AddItemButton({
               placeholder="Search for a place, restaurant, attraction..."
             />
             {selectedPlace && (
-              <div className="mt-2 rounded-lg border border-blue-200 bg-blue-50 p-2 text-sm">
-                <p className="font-medium text-blue-900">{selectedPlace.name}</p>
+              <div className="mt-2 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50 p-2 text-sm">
+                <p className="font-medium text-blue-900 dark:text-blue-300">{selectedPlace.name}</p>
                 {selectedPlace.address && (
-                  <p className="text-blue-700">{selectedPlace.address}</p>
+                  <p className="text-blue-700 dark:text-blue-400">{selectedPlace.address}</p>
                 )}
               </div>
             )}
@@ -185,7 +209,7 @@ export function AddItemButton({
         <select
           value={selectedDayId}
           onChange={(e) => setSelectedDayId(e.target.value)}
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Unscheduled</option>
           {days.map((day) => (
@@ -204,7 +228,7 @@ export function AddItemButton({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
 
         <div className="flex gap-2">
