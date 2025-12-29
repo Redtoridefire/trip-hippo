@@ -33,7 +33,7 @@ export function TripNav({ tripId }: TripNavProps) {
   const pathname = usePathname()
 
   return (
-    <nav className="border-b border-gray-200 bg-white">
+    <nav className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <div className="flex overflow-x-auto px-4 lg:px-6">
         {navItems.map((item) => {
           const href = item.href ? `/trip/${tripId}/${item.href}` : `/trip/${tripId}`
@@ -44,10 +44,10 @@ export function TripNav({ tripId }: TripNavProps) {
               key={item.name}
               href={href}
               className={cn(
-                "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+                "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap",
                 isActive
-                  ? "border-blue-600 text-blue-600"
-                  : "border-transparent text-gray-600 hover:border-gray-300 hover:text-gray-900"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-900 dark:hover:text-white"
               )}
             >
               <item.icon className="h-4 w-4" />

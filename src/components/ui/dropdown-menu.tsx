@@ -89,7 +89,7 @@ function DropdownMenuContent({
   return (
     <div
       className={cn(
-        "absolute z-50 mt-2 min-w-[8rem] overflow-hidden rounded-lg border border-gray-200 bg-white p-1 shadow-lg",
+        "absolute z-50 mt-2 min-w-[8rem] overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-1 shadow-lg",
         align === "start" && "left-0",
         align === "center" && "left-1/2 -translate-x-1/2",
         align === "end" && "right-0",
@@ -112,8 +112,8 @@ function DropdownMenuItem({
   return (
     <button
       className={cn(
-        "flex w-full items-center rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-gray-100",
-        destructive && "text-red-600 hover:bg-red-50",
+        "flex w-full items-center rounded-md px-2 py-1.5 text-sm transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700",
+        destructive && "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30",
         className
       )}
       onClick={() => {
@@ -128,7 +128,7 @@ function DropdownMenuItem({
 }
 
 function DropdownMenuSeparator() {
-  return <div className="-mx-1 my-1 h-px bg-gray-200" />
+  return <div className="-mx-1 my-1 h-px bg-gray-200 dark:bg-gray-700" />
 }
 
 export {

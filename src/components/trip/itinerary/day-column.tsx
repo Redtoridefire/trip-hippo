@@ -46,15 +46,17 @@ export function DayColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border bg-white transition-colors ${
-        isOver ? "border-blue-400 bg-blue-50" : "border-gray-200"
+      className={`rounded-xl border-2 transition-colors ${
+        isOver
+          ? "border-blue-400 bg-blue-50 dark:bg-blue-950/30"
+          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
       }`}
     >
       {/* Day header */}
-      <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-4 py-3">
         <div>
-          <h3 className="font-semibold text-gray-900">{dayOfWeek}</h3>
-          <p className="text-sm text-gray-500">{formattedDate}</p>
+          <h3 className="font-semibold text-gray-900 dark:text-white">{dayOfWeek}</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{formattedDate}</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -74,7 +76,7 @@ export function DayColumn({
             items={sortedItems.map((i) => i.id)}
             strategy={verticalListSortingStrategy}
           >
-            <div className="space-y-2">
+            <div className="space-y-3">
               {sortedItems.map((item, index) => (
                 <div key={item.id}>
                   <ItineraryItemCard
@@ -84,8 +86,8 @@ export function DayColumn({
                   />
                   {/* Travel time between items */}
                   {index < sortedItems.length - 1 && (
-                    <div className="my-2 flex items-center justify-center">
-                      <div className="flex items-center gap-1 rounded-full bg-gray-100 px-2 py-1 text-xs text-gray-500">
+                    <div className="my-3 flex items-center justify-center">
+                      <div className="flex items-center gap-1.5 rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400">
                         <Clock className="h-3 w-3" />
                         <span>Travel time</span>
                       </div>
@@ -96,7 +98,7 @@ export function DayColumn({
             </div>
           </SortableContext>
         ) : (
-          <div className="rounded-lg border border-dashed border-gray-200 p-4 text-center text-sm text-gray-500">
+          <div className="rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-600 p-6 text-center text-sm text-gray-500 dark:text-gray-400">
             Drag items here or add new places
           </div>
         )}
@@ -104,8 +106,8 @@ export function DayColumn({
 
       {/* Day notes */}
       {day.notes && (
-        <div className="border-t border-gray-100 px-4 py-3">
-          <p className="text-sm text-gray-600">{day.notes}</p>
+        <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
+          <p className="text-sm text-gray-600 dark:text-gray-400">{day.notes}</p>
         </div>
       )}
     </div>

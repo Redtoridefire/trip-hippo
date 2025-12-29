@@ -81,14 +81,14 @@ export function CreateTripModal({ isOpen, onClose }: CreateTripModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="w-full max-w-md rounded-xl bg-white dark:bg-gray-900 p-6 shadow-xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-900">Create a new trip</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Create a new trip</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-gray-500 hover:bg-gray-100"
+            className="rounded-lg p-1 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
           >
             <X className="h-5 w-5" />
           </button>
@@ -97,7 +97,7 @@ export function CreateTripModal({ isOpen, onClose }: CreateTripModalProps) {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/30 p-3 text-sm text-red-600 dark:text-red-400">
               {error}
             </div>
           )}
