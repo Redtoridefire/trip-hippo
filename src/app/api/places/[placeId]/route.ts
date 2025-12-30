@@ -40,9 +40,10 @@ export async function GET(
       )
     }
 
-    // Validate placeId format (Google place IDs are alphanumeric with possible dashes and underscores)
+    // Validate placeId - Google place IDs are typically alphanumeric with underscores
+    // but can vary, so we just check for reasonable length and no obvious injection
     // Max length of 500 chars to prevent potential abuse
-    if (!/^[a-zA-Z0-9_-]{1,500}$/.test(placeId)) {
+    if (!placeId || placeId.length > 500 || /[<>\"'`]/.test(placeId)) {
       return NextResponse.json(
         { error: "Invalid place ID format" },
         { status: 400 }
